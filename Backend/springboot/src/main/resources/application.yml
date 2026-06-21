@@ -2,9 +2,10 @@ spring:
   application:
     name: earth-guardian-core
   datasource:
-    url: jdbc:postgresql://[SUPABASE_HOST]:6543/postgres
+    url: jdbc:postgresql://db.xkxoqqvpdixizlibwrsq.supabase.co:5432/postgres?user=postgres&password=Alpit$Supabase2603
     username: postgres
-    password: ${DB_PASSWORD}
+    password: Alpit$Supabase2603
+    driverClassName: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update

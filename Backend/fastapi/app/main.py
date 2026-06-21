@@ -1,7 +1,7 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import ocr
+from app.routers import ocr, chat
 
 # Configure logging
 logging.basicConfig(
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(ocr.router, prefix="/api/v1")
+app.include_router(chat.router, prefix="/api/v1")
 
 @app.get("/health")
 def read_root():

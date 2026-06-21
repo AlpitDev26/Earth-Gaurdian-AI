@@ -25,6 +25,12 @@ public class User {
     @Builder.Default
     private String currentLevel = "Seed";
 
+    @Builder.Default
+    private Integer currentCarbonScore = 100;
+
+    @Builder.Default
+    private Double totalCarbonImpact = 0.0;
+
     @CreationTimestamp private LocalDateTime createdAt;
     @UpdateTimestamp private LocalDateTime updatedAt;
 }

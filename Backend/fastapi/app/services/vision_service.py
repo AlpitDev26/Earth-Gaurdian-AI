@@ -13,18 +13,20 @@ genai.configure(api_key=settings.GEMINI_API_KEY)
 SYSTEM_PROMPT = """
 You are an AI tasked with extracting line items from a receipt image.
 Return ONLY a valid JSON array of objects. Do not include markdown formatting or extra text.
-Each object must have exactly two keys: "name" (string) and "quantity" (float).
+Each object must have exactly three keys: "name" (string), "quantity" (float), and "alternative" (string).
+For "alternative", if the item has a high carbon footprint (like meat, dairy, or plastics), provide a very short 2-5 word eco-friendly alternative (e.g. "Try Plant-Based Mince"). If it's already low-carbon, leave it as an empty string "".
 Example:
 [
-  {"name": "Organic Milk 1L", "quantity": 1.0},
-  {"name": "Beef Steak 500g", "quantity": 1.0}
+  {"name": "Organic Milk 1L", "quantity": 1.0, "alternative": "Try Oat Milk"},
+  {"name": "Beef Steak 500g", "quantity": 1.0, "alternative": "Try Lentils or Tofu"},
+  {"name": "Apples", "quantity": 1.0, "alternative": ""}
 ]
 """
 
 def process_receipt_image(image_bytes: bytes) -> ReceiptResponse:
     try:
-        # Use gemini-1.5-flash for lightning-fast multimodal OCR processing
-        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
+        # Use gemini-flash-latest for lightning-fast multimodal OCR processing
+        model = genai.GenerativeModel('gemini-flash-latest', system_instruction=SYSTEM_PROMPT)
         
         image_parts = [
             {
@@ -52,9 +54,10 @@ def process_receipt_image(image_bytes: bytes) -> ReceiptResponse:
         for item in items_data:
             name = item.get("name", "Unknown Item")
             qty = item.get("quantity", 1.0)
+            alt = item.get("alternative", "")
             co2 = estimate_carbon(name, qty)
             
-            parsed_items.append(ReceiptItem(name=name, quantity=qty, co2=co2))
+            parsed_items.append(ReceiptItem(name=name, quantity=qty, co2=co2, alternative=alt))
             total_carbon += co2
             
         return ReceiptResponse(

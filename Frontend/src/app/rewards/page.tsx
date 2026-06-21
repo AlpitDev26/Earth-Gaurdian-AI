@@ -7,7 +7,6 @@ import { motion } from 'framer-motion';
 import { getLevelInfo, MOCK_ACHIEVEMENTS } from '@/components/rewards/utils';
 
 // MOCK DATA
-const USER_POINTS = 1250;
 const BADGES = [
   { id: 1, name: "First Scan", icon: <Zap />, unlocked: true, date: "Jun 10" },
   { id: 2, name: "Eco Hero", icon: <Leaf />, unlocked: true, date: "Jun 12" },
@@ -19,11 +18,21 @@ const BADGES = [
 
 export default function RewardsScreen() {
   const [points, setPoints] = useState(0);
+  const [targetPoints, setTargetPoints] = useState(0);
   
+  useEffect(() => {
+    fetch('http://localhost:8080/api/v1/users/me')
+      .then(res => res.json())
+      .then(data => {
+         setTargetPoints(data.totalPoints || 0);
+      })
+      .catch(err => console.error("Failed to fetch user stats", err));
+  }, []);
+
   useEffect(() => {
     // Points counter animation effect
     let start = 0;
-    const end = USER_POINTS;
+    const end = targetPoints;
     const duration = 1500;
     const startTime = performance.now();
 
@@ -36,7 +45,7 @@ export default function RewardsScreen() {
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  }, []);
+  }, [targetPoints]);
 
   const levelInfo = getLevelInfo(points);
 

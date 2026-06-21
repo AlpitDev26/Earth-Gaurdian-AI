@@ -3,8 +3,12 @@ import logging
 from app.schemas.receipt import ReceiptResponse
 from app.services.vision_service import process_receipt_image
 
-router = APIRouter()
+router = APIRouter(tags=["OCR"])
 logger = logging.getLogger("api")
+
+@router.get("/test")
+async def test():
+    return {"message": "OCR Router Working"}
 
 @router.post("/scan-receipt", response_model=ReceiptResponse)
 async def scan_receipt_endpoint(file: UploadFile = File(...)):

@@ -8,13 +8,47 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Scanner() {
   const [isScanning, setIsScanning] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [results, setResults] = useState<{item: string, co2: number}[] | null>(null);
+  const [results, setResults] = useState<{item: string, co2: number, alternative?: string}[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new window.Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; // Resize width to 800px for AI performance
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+          
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const newFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(newFile);
+            } else {
+              reject(new Error('Compression failed'));
+            }
+          }, 'image/jpeg', 0.7); // Compress to 70% quality
+        };
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = e.target.files?.[0];
       if (file) {
@@ -23,27 +57,46 @@ export default function Scanner() {
           return;
         }
         setError(null);
-        const imageUrl = URL.createObjectURL(file);
+        
+        // Fast compression before AI
+        setIsScanning(true);
+        const compressedFile = await compressImage(file);
+        
+        const imageUrl = URL.createObjectURL(compressedFile);
         setImagePreview(imageUrl);
-        simulateScan();
+        await performScan(compressedFile);
       }
     } catch (err) {
       setError('Camera access failed or was denied.');
     }
   };
 
-  const simulateScan = () => {
+  const performScan = async (file: File) => {
     setIsScanning(true);
-    // Simulate AI processing time
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Use the Spring Boot API Gateway instead of direct FastAPI!
+      const response = await fetch('http://localhost:8080/api/v1/receipts/scan', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process receipt');
+      }
+
+      const rawData = await response.json();
+      const data = rawData.data; // Unwrap the Spring Boot ApiResponse wrapper
+      // Mapping API response to our UI state
+      setResults(data.items.map((i: any) => ({ item: i.name, co2: i.co2, alternative: i.alternative })));
+    } catch (err) {
+      setError('AI Processing failed. Make sure your FastAPI backend is running.');
+      setResults(null);
+    } finally {
       setIsScanning(false);
-      setResults([
-        { item: "Oat Milk (1L)", co2: 0.9 },
-        { item: "Organic Apples", co2: 0.3 },
-        { item: "Beef Steak (500g)", co2: 13.5 },
-        { item: "White Rice (1kg)", co2: 4.0 }
-      ]);
-    }, 3000);
+    }
   };
 
   const resetScanner = () => {
@@ -178,12 +231,20 @@ export default function Scanner() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.1 }}
                     key={i} 
-                    className="flex justify-between items-center p-3 border-b border-white/5 last:border-0"
+                    className="p-3 border-b border-white/5 last:border-0"
                   >
-                    <span className="font-medium text-sm text-gray-200">{r.item}</span>
-                    <span className={r.co2 > 5 ? "text-danger font-bold text-sm bg-danger/10 px-2 py-1 rounded-md" : "text-primary font-bold text-sm"}>
-                      {r.co2} kg
-                    </span>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-sm text-gray-200">{r.item}</span>
+                      <span className={r.co2 > 5 ? "text-danger font-bold text-sm bg-danger/10 px-2 py-1 rounded-md" : "text-primary font-bold text-sm"}>
+                        {r.co2} kg
+                      </span>
+                    </div>
+                    {r.alternative && r.alternative.trim() !== "" && r.co2 > 1 && (
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-primary bg-primary/10 px-2 py-1.5 rounded-md border border-primary/20">
+                        <Sparkles size={12} className="shrink-0" /> 
+                        <span className="font-medium">Try next time:</span> {r.alternative}
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </div>
@@ -192,6 +253,22 @@ export default function Scanner() {
                 <span className="text-gray-400 text-sm font-medium uppercase tracking-wider">Total Impact</span>
                 <span className="text-2xl font-bold tracking-tighter text-white">{totalCo2} <span className="text-sm font-normal text-gray-500">kg CO2</span></span>
               </div>
+
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className={`p-4 rounded-xl mb-8 border ${Number(totalCo2) > 10 ? 'bg-danger/10 border-danger/30 shadow-[0_0_20px_rgba(239,68,68,0.15)]' : 'bg-primary/10 border-primary/30 shadow-[0_0_20px_rgba(16,185,129,0.15)]'}`}
+              >
+                <h3 className={`font-black text-xs tracking-wider uppercase mb-2 flex items-center gap-2 ${Number(totalCo2) > 10 ? 'text-danger' : 'text-primary'}`}>
+                  {Number(totalCo2) > 10 ? '⚠️ High Emission Alert' : '🌱 Eco-Warrior Status'}
+                </h3>
+                <p className="text-sm text-gray-200 leading-relaxed">
+                  {Number(totalCo2) > 10 
+                    ? <span>Your footprint is a heavy <strong className="text-white text-base">{totalCo2} kg CO2</strong>. <br/><br/><strong className="text-danger">MOTIVATION:</strong> Small changes matter! Swap red meat for plant-based proteins to instantly reduce your impact by up to 80%!</span>
+                    : <span>Your footprint is a light <strong className="text-white text-base">{totalCo2} kg CO2</strong>. <br/><br/><strong className="text-primary">MOTIVATION:</strong> You are protecting the Digital Twin! Keep buying local to maintain a thriving ecosystem!</span>}
+                </p>
+              </motion.div>
 
               <Link href="/">
                 <button className="w-full bg-primary hover:bg-emerald-400 transition-colors text-[#0B0F19] font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 transform duration-200">

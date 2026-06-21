@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  springboot-core:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_URL=${DB_URL}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - earth-guardian-net
+
+networks:
+  earth-guardian-net:
+    driver: bridge

@@ -1,5 +1,13 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers import ocr
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 app = FastAPI(
     title="Earth Guardian AI Service",
@@ -14,11 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+app.include_router(ocr.router, prefix="/api/v1")
+
+@app.get("/health")
 def read_root():
     return {"status": "AI Service is running", "service": "Earth Guardian OCR Engine"}
-
-@app.post("/scan-receipt")
-def scan_receipt():
-    # To be implemented: Send image to OpenAI Vision API
-    return {"status": "pending implementation"}

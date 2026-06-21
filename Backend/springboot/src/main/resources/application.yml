@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: earth-guardian-core
+  datasource:
+    url: jdbc:postgresql://[SUPABASE_HOST]:6543/postgres
+    username: postgres
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080

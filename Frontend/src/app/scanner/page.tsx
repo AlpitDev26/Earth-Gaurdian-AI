@@ -78,7 +78,7 @@ export default function Scanner() {
       formData.append('file', file);
 
       // Use the Spring Boot API Gateway instead of direct FastAPI!
-      const response = await fetch('http://localhost:8080/api/v1/receipts/scan', {
+      const response = await fetch('/api/v1/receipts/scan', {
         method: 'POST',
         body: formData,
       });

@@ -80,7 +80,7 @@ export default function Dashboard() {
   const [level, setLevel] = useState("Seed");
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/v1/users/me')
+    fetch('/api/v1/users/me')
       .then(res => res.json())
       .then(data => {
         setPoints(data.totalPoints || 0);

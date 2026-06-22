@@ -21,7 +21,7 @@ export default function RewardsScreen() {
   const [targetPoints, setTargetPoints] = useState(0);
   
   useEffect(() => {
-    fetch('http://localhost:8080/api/v1/users/me')
+    fetch('/api/v1/users/me')
       .then(res => res.json())
       .then(data => {
          setTargetPoints(data.totalPoints || 0);
